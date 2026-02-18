@@ -1,18 +1,248 @@
-version: '3'
+# =====================================================
+# Docker Compose - Microservices Orchestration
+# =====================================================
+# PURPOSE: Orchestrate all microservices and infrastructure
+#          for local development and testing.
+#
+# SERVICES:
+# 1. MySQL Database - Stores application data
+# 2. Eureka Server - Service discovery
+# 3. Accounts Service - Business logic for accounts
+# 4. API Gateway - Single entry point
+# 5. Zipkin - Distributed tracing
+#
+# HOW TO USE:
+# - Start all: docker-compose up -d
+# - View logs: docker-compose logs -f
+# - Stop all: docker-compose down
+# - Rebuild: docker-compose up -d --build
+# =====================================================
+
+version: '3.8'
 
 services:
- database:
-   image: mysql:latest
-   container_name: mysql-container
-   environment:
-     MYSQL_ROOT_PASSWORD: root
-     MYSQL_DATABASE: 3M
-     MYSQL_USER: medo_3m
-     MYSQL_PASSWORD: medo
-   ports:
-     - 3306:3306
-   volumes:
-     - mysql_data:/var/lib/mysql
+  # =====================================================
+  # MySQL Database
+  # =====================================================
+  # PURPOSE: Persistent data storage for microservices
+  # HOW IT WORKS: Stores customer and account data
+  # =====================================================
+  mysql:
+    image: mysql:8.0
+    container_name: mysql-container
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: 3M
+      MYSQL_USER: medo_3m
+      MYSQL_PASSWORD: medo
+      TZ: UTC
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - microservices-network
 
+  # =====================================================
+  # Eureka Server - Service Discovery
+  # =====================================================
+  # PURPOSE: Service registration and discovery
+  # HOW IT WORKS: Microservices register here; others discover them
+  # TARGET: Enables dynamic service discovery without hardcoded URLs
+  # =====================================================
+  eureka-server:
+    build:
+      context: ./EurekaServer
+      dockerfile: Dockerfile
+    container_name: eureka-server
+    environment:
+      EUREKA_SERVER_URL: http://eureka-server:8761/eureka/
+    ports:
+      - "8761:8761"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8761/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    restart: unless-stopped
+    networks:
+      - microservices-network
+    depends_on:
+      - mysql
+
+  # =====================================================
+  # Accounts Microservice
+  # =====================================================
+  # PURPOSE: Handles customer accounts and transactions
+  # HOW IT WORKS: REST API for CRUD operations on accounts
+  # TARGET: Business logic for account management
+  # =====================================================
+  accounts-service:
+    build:
+      context: ./Accounts
+      dockerfile: Dockerfile
+    container_name: accounts-service
+    environment:
+      DB_URL: mysql:3306/3M
+      DB_USER: medo_3m
+      DB_PASS: medo
+      EUREKA_SERVER_URL: http://eureka-server:8761/eureka/
+      ZIPKIN_URL: http://zipkin:9411
+      SPRING_PROFILES_ACTIVE: docker
+    ports:
+      - "8080:8080"
+      - "8081:8081"  # Management port
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    restart: unless-stopped
+    networks:
+      - microservices-network
+    depends_on:
+      mysql:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+
+  # =====================================================
+  # API Gateway
+  # =====================================================
+  # PURPOSE: Single entry point for all microservices
+  # HOW IT WORKS: Routes requests to appropriate services
+  # TARGET: Centralized routing, load balancing, and security
+  # =====================================================
+  api-gateway:
+    build:
+      context: ./ApiGateway
+      dockerfile: Dockerfile
+    container_name: api-gateway
+    environment:
+      EUREKA_SERVER_URL: http://eureka-server:8761/eureka/
+      ZIPKIN_URL: http://zipkin:9411
+    ports:
+      - "9090:9090"
+      - "9091:9091"  # Management port
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9090/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    restart: unless-stopped
+    networks:
+      - microservices-network
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      accounts-service:
+        condition: service_healthy
+
+  # =====================================================
+  # Zipkin - Distributed Tracing
+  # =====================================================
+  # PURPOSE: Visualize distributed traces across services
+  # HOW IT WORKS: Collects and displays trace data from Sleuth
+  # TARGET: Debug and monitor request flow across microservices
+  # =====================================================
+  zipkin:
+    image: openzipkin/zipkin:latest
+    container_name: zipkin
+    environment:
+      STORAGE_TYPE: elasticsearch
+      ES_HOSTS: elasticsearch:9200
+    ports:
+      - "9411:9411"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:9411/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+    networks:
+      - microservices-network
+    depends_on:
+      - elasticsearch
+
+  # =====================================================
+  # Elasticsearch for Zipkin Storage
+  # =====================================================
+  # PURPOSE: Storage backend for Zipkin traces
+  # =====================================================
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.12.0
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    restart: unless-stopped
+    networks:
+      - microservices-network
+
+  # =====================================================
+  # Prometheus - Metrics Collection
+  # =====================================================
+  # PURPOSE: Collect and store metrics from all services
+  # HOW IT WORKS: Scrapes /actuator/prometheus endpoints
+  # TARGET: Monitoring and alerting
+  # =====================================================
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+    ports:
+      - "9092:9090"  # Prometheus UI (changed from 9090 to avoid conflict with API Gateway)
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    restart: unless-stopped
+    networks:
+      - microservices-network
+
+# =====================================================
+# Networks
+# =====================================================
+# PURPOSE: Isolated network for service-to-service communication
+# =====================================================
+networks:
+  microservices-network:
+    driver: bridge
+
+# =====================================================
+# Volumes
+# =====================================================
+# PURPOSE: Persistent data storage
+# =====================================================
 volumes:
- mysql_data:
+  mysql_data:
+    driver: local
+  elasticsearch_data:
+    driver: local
+  prometheus_data:
+    driver: local

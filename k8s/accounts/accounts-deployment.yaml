@@ -1,0 +1,198 @@
+# =====================================================
+# Kubernetes Deployment: Accounts Microservice
+# =====================================================
+# PURPOSE: Deploy Accounts Microservice to Kubernetes
+#
+# HOW IT WORKS:
+# 1. Creates a Deployment with multiple replicas
+# 2. Registers with Eureka for service discovery
+# 3. Exposes metrics for Prometheus scraping
+# 4. Includes HPA for auto-scaling
+# 5. Connects to MySQL for data persistence
+# =====================================================
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: accounts-config
+  namespace: medo-bank
+data:
+  application.yml: |
+    server:
+      port: 8080
+    spring:
+      application:
+        name: accounts-service
+      datasource:
+        url: jdbc:mysql://mysql:3306/3M?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC
+        username: medo_3m
+        password: ${DB_PASSWORD}
+      cloud:
+        discovery:
+          enabled: true
+    eureka:
+      instance:
+        prefer-ip-address: true
+        lease-renewal-interval-in-seconds: 30
+      client:
+        register-with-eureka: true
+        fetch-registry: true
+        service-url:
+          defaultZone: http://eureka-server:8761/eureka/
+    management:
+      endpoints:
+        web:
+          exposure:
+            include: '*'
+      metrics:
+        export:
+          prometheus:
+            enabled: true
+    spring.sleuth:
+      zipkin:
+        base-url: http://zipkin:9411
+        enabled: true
+      sampling:
+        probability: 1.0
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: accounts-secrets
+  namespace: medo-bank
+type: Opaque
+stringData:
+  db-password: "medo"
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: accounts-service
+  namespace: medo-bank
+  labels:
+    app: accounts-service
+    version: v1
+spec:
+  replicas: 2  # Start with 2 replicas for high availability
+  selector:
+    matchLabels:
+      app: accounts-service
+  template:
+    metadata:
+      labels:
+        app: accounts-service
+        version: v1
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/actuator/prometheus"
+    spec:
+      containers:
+        - name: accounts-service
+          image: medo/accounts-service:latest  # Replace with your image
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+              name: http
+            - containerPort: 8081
+              name: management
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: "kubernetes"
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: accounts-secrets
+                  key: db-password
+            - name: EUREKA_SERVER_URL
+              value: "http://eureka-server:8761/eureka/"
+            - name: ZIPKIN_URL
+              value: "http://zipkin:9411"
+            - name: JAVA_OPTS
+              value: "-Xms256m -Xmx512m -XX:+UseG1GC"
+          volumeMounts:
+            - name: config
+              mountPath: /config
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "500m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8081
+            initialDelaySeconds: 60
+            periodSeconds: 20
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8081
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 3
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sh", "-c", "sleep 15"]
+      volumes:
+        - name: config
+          configMap:
+            name: accounts-config
+      terminationGracePeriodSeconds: 30
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: accounts-service
+  namespace: medo-bank
+  labels:
+    app: accounts-service
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8080
+      targetPort: 8080
+      protocol: TCP
+      name: http
+    - port: 8081
+      targetPort: 8081
+      protocol: TCP
+      name: management
+  selector:
+    app: accounts-service
+
+---
+# Horizontal Pod Autoscaler
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: accounts-service-hpa
+  namespace: medo-bank
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: accounts-service
+  minReplicas: 2
+  maxReplicas: 5
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80

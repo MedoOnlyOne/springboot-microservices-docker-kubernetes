@@ -1,0 +1,61 @@
+-- =====================================================
+-- Flyway Migration: V3
+-- Description: Create indexes and triggers for performance and audit
+-- Author: Medo Team
+-- =====================================================
+
+-- Additional composite index for frequently queried combinations
+CREATE INDEX idx_customer_name_email ON customers(name, email);
+
+-- Create trigger to automatically populate created_by and updated_by
+-- (Optional enhancement - for more sophisticated audit tracking)
+
+DELIMITER $$
+
+-- Trigger to set created_by before insert
+CREATE TRIGGER trg_customers_before_insert
+BEFORE INSERT ON customers
+FOR EACH ROW
+BEGIN
+    IF NEW.created_by IS NULL OR NEW.created_by = '' THEN
+        SET NEW.created_by = 'ACCOUNTS_MS';
+    END IF;
+    IF NEW.updated_by IS NULL OR NEW.updated_by = '' THEN
+        SET NEW.updated_by = 'ACCOUNTS_MS';
+    END IF;
+END$$
+
+-- Trigger to set updated_by before update
+CREATE TRIGGER trg_customers_before_update
+BEFORE UPDATE ON customers
+FOR EACH ROW
+BEGIN
+    IF NEW.updated_by IS NULL OR NEW.updated_by = '' THEN
+        SET NEW.updated_by = 'ACCOUNTS_MS';
+    END IF;
+END$$
+
+-- Trigger to set created_by before insert for accounts
+CREATE TRIGGER trg_accounts_before_insert
+BEFORE INSERT ON accounts
+FOR EACH ROW
+BEGIN
+    IF NEW.created_by IS NULL OR NEW.created_by = '' THEN
+        SET NEW.created_by = 'ACCOUNTS_MS';
+    END IF;
+    IF NEW.updated_by IS NULL OR NEW.updated_by = '' THEN
+        SET NEW.updated_by = 'ACCOUNTS_MS';
+    END IF;
+END$$
+
+-- Trigger to set updated_by before update for accounts
+CREATE TRIGGER trg_accounts_before_update
+BEFORE UPDATE ON accounts
+FOR EACH ROW
+BEGIN
+    IF NEW.updated_by IS NULL OR NEW.updated_by = '' THEN
+        SET NEW.updated_by = 'ACCOUNTS_MS';
+    END IF;
+END$$
+
+DELIMITER ;

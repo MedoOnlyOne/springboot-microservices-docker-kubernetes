@@ -1,0 +1,14 @@
+# =====================================================
+# Kubernetes Namespace
+# =====================================================
+# PURPOSE: Create namespace for Medo Bank microservices
+# =====================================================
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: medo-bank
+  labels:
+    name: medo-bank
+    environment: production

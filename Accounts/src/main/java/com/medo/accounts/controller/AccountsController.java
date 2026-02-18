@@ -100,7 +100,10 @@ public class AccountsController {
             )
     })
     @GetMapping("/fetch")
-    public ResponseEntity<CustomerDto> fetchAccountDetails(@RequestParam @Pattern(regexp="(^$|[0-9]{10})",message= "V_MOBILE") String mobileNumber) {
+    public ResponseEntity<CustomerDto> fetchAccountDetails(
+            @RequestParam
+            @Pattern(regexp = "(^$|[0-9]{10})", message = "V_MOBILE")
+            String mobileNumber) {
         CustomerDto res = accountsService.fetchAccount(mobileNumber);
         return ResponseEntity
                 .status(HttpStatus.OK)

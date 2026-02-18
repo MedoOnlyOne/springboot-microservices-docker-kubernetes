@@ -1,0 +1,148 @@
+# =====================================================
+# Kubernetes Deployment: Eureka Server
+# =====================================================
+# PURPOSE: Deploy Eureka Server for Service Discovery
+#
+# HOW IT WORKS:
+# 1. Creates a Deployment with 1 replica (can be scaled)
+# 2. Exposes via ClusterIP for internal service communication
+# 3. Includes ConfigMap for configuration
+# 4. Includes HPA for auto-scaling
+# =====================================================
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: eureka-config
+  namespace: medo-bank
+data:
+  application.yml: |
+    server:
+      port: 8761
+    spring:
+      application:
+        name: eureka-server
+    eureka:
+      instance:
+        hostname: eureka-server
+        prefer-ip-address: true
+      client:
+        register-with-eureka: true
+        fetch-registry: true
+        service-url:
+          defaultZone: http://eureka-server:8761/eureka/
+      server:
+        enable-self-preservation: true
+        eviction-interval-timer-in-ms: 60000
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: eureka-server
+  namespace: medo-bank
+  labels:
+    app: eureka-server
+    version: v1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: eureka-server
+  template:
+    metadata:
+      labels:
+        app: eureka-server
+        version: v1
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8761"
+        prometheus.io/path: "/actuator/prometheus"
+    spec:
+      containers:
+        - name: eureka-server
+          image: medo/eureka-server:latest  # Replace with your image
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8761
+              name: http
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: "kubernetes"
+            - name: EUREKA_SERVER_URL
+              value: "http://eureka-server:8761/eureka/"
+            - name: JAVA_OPTS
+              value: "-Xms256m -Xmx512m"
+          volumeMounts:
+            - name: config
+              mountPath: /config
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8761
+            initialDelaySeconds: 60
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8761
+            initialDelaySeconds: 30
+            periodSeconds: 10
+      volumes:
+        - name: config
+          configMap:
+            name: eureka-config
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: eureka-server
+  namespace: medo-bank
+  labels:
+    app: eureka-server
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8761
+      targetPort: 8761
+      protocol: TCP
+      name: http
+  selector:
+    app: eureka-server
+
+---
+# Horizontal Pod Autoscaler for Eureka
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: eureka-server-hpa
+  namespace: medo-bank
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: eureka-server
+  minReplicas: 1
+  maxReplicas: 3
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
