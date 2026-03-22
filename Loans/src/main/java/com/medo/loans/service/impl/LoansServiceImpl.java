@@ -1,14 +1,16 @@
 package com.medo.loans.service.impl;
 
 import com.medo.loans.constants.LoansConstants;
+import com.medo.loans.dto.LoansDto;
 import com.medo.loans.entity.Loans;
 import com.medo.loans.exception.LoanAlreadyExistException;
+import com.medo.loans.exception.ResourceNotFoundException;
+import com.medo.loans.mapper.LoansMapper;
 import com.medo.loans.repository.LoansRepository;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 import com.medo.loans.service.ILoansService;
 
-import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.Random;
 
@@ -23,6 +25,29 @@ public class LoansServiceImpl implements ILoansService {
             throw new LoanAlreadyExistException("Loan already registered with given mobileNumber "+mobileNumber);
         }
         loansRepository.save(createNewLoan(mobileNumber));
+    }
+
+    @Override
+    public LoansDto getLoan(String mobileNumber) {
+        Loans loan = loansRepository.findByMobileNumber(mobileNumber).orElseThrow(() ->
+               new ResourceNotFoundException("Loan", "mobileNumber", mobileNumber));
+        return LoansMapper.mapToLoansDto(loan, new LoansDto());
+    }
+
+    @Override
+    public boolean updateLoan(LoansDto loansDto) {
+        Loans loan = loansRepository.findByLoanNumber(loansDto.getLoanNumber()).orElseThrow(() ->
+                new ResourceNotFoundException("Loan", "LoanNumber", loansDto.getLoanNumber()));
+        LoansMapper.mapToLoans(loansDto, loan);
+        loansRepository.save(loan);
+        return true;
+    }
+    @Override
+    public boolean deleteLoan(String mobileNumber) {
+        Loans loan = loansRepository.findByMobileNumber(mobileNumber).orElseThrow(() ->
+                new ResourceNotFoundException("Loan", "mobileNumber", mobileNumber));
+        loansRepository.deleteById(loan.getLoanId());
+        return true;
     }
 
     private Loans createNewLoan(String mobileNumber) {
