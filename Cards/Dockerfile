@@ -15,11 +15,11 @@ FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
 # Add non-root user for security
-RUN addgroup --system appuser && adduser --system --group appuser
+RUN addgroup -S appuser && adduser -S appuser -G appuser
 
 # Copy the JAR from the build stage to the production image
-COPY --from=build /app/target/*.jar app.jar
-RUN chown appuser:appuser app.jar
+COPY --from=build --chown=appuser:appuser /app/target/*.jar app.jar
+#RUN chown appuser:appuser app.jar (using COPY and chown in one command to reduce the layers and container size)
 
 # Add metadata labels
 LABEL maintainer="mohamed.medhat2199@gmail.com"
