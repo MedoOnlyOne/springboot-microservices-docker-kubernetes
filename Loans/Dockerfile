@@ -14,11 +14,26 @@ RUN mvn clean package -DskipTests
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
+# Add non-root user for security
+RUN addgroup --system appuser && adduser --system --group appuser
+
 # Copy the JAR from the build stage to the production image
 COPY --from=build /app/target/*.jar app.jar
+RUN chown appuser:appuser app.jar
 
-# Expose the port your Spring Boot app runs on (default is 8080)
+# Add metadata labels
+LABEL maintainer="mohamed.medhat2199@gmail.com"
+LABEL description="Spring Boot Loans Microservice"
+
+# Expose the port your Spring Boot app runs on
 EXPOSE 8090
+
+# Switch to non-root user
+USER appuser
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+  CMD wget --quiet --tries=1 --spider http://localhost:8090/actuator/health || exit 1
 
 # Run the application
 ENTRYPOINT ["java", "-jar", "app.jar"]
