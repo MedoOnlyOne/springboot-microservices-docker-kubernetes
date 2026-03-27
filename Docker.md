@@ -73,31 +73,143 @@ Spring Boot converts `UPPER_CASE` environment variables to `camelCase` propertie
 
 
 ```yaml
-version: '3.8'
 services:
-  # The Spring Boot Microservice
-  app-service:
-    build: .
+  accountsdb:
+    image: mysql
+    container_name: accounts-db
+    ports:
+      - 3306:3306
+    volumes:
+      - accounts_data:/var/lib/mysql
+    networks:
+      - medobank
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: accounts
+    healthcheck:
+      test: [ "CMD", "mysqladmin" ,"ping", "-h", "localhost" ]
+      timeout: 10s
+      retries: 10
+      interval: 10s
+      start_period: 10s
+  loansdb:
+    image: mysql
+    container_name: loans-db
+    ports:
+      - 3307:3306
+    volumes:
+      - loans_data:/var/lib/mysql
+    networks:
+      - medobank
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: loans
+    healthcheck:
+      test: [ "CMD", "mysqladmin" ,"ping", "-h", "localhost" ]
+      timeout: 10s
+      retries: 10
+      interval: 10s
+      start_period: 10s
+  cardsdb:
+    image: mysql
+    container_name: cards-db
+    ports:
+      - 3308:3306
+    volumes:
+      - cards_data:/var/lib/mysql
+    networks:
+      - medobank
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: cards
+    healthcheck:
+      test: [ "CMD", "mysqladmin" ,"ping", "-h", "localhost" ]
+      timeout: 10s
+      retries: 10
+      interval: 10s
+      start_period: 10s
+  accounts:
+    build: ./Accounts
+    image: "medo3m/accounts:medobank"
+    container_name: accounts-ms
     ports:
       - "8080:8080"
     environment:
-      # Database connection details passed as variables
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://db-service:5432/myapp
-      - SPRING_DATASOURCE_USERNAME=postgres
-      - SPRING_DATASOURCE_PASSWORD=secretpassword
-      - SPRING_PROFILES_ACTIVE=prod
+      SPRING_DATASOURCE_URL: jdbc:mysql://accountsdb:3306/accounts
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root
+    deploy:
+      resources:
+        limits:
+          memory: 700m
+    networks:
+      - medobank
     depends_on:
-      - db-service
-
-  # The Database Service
-  db-service:
-    image: postgres:15-alpine
-    environment:
-      - POSTGRES_DB=myapp
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=secretpassword
+      accountsdb:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/actuator/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+  loans:
+    build: ./Loans
+    image: "medo3m/loans:medobank"
+    container_name: loans-ms
     ports:
-      - "5432:5432"
+      - "8090:8090"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://loansdb:3306/loans
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root
+    deploy:
+      resources:
+        limits:
+          memory: 700m
+    networks:
+      - medobank
+    depends_on:
+      loansdb:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8090/actuator/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+  cards:
+    build: ./Cards
+    image: "medo3m/cards:medobank"
+    container_name: cards-ms
+    ports:
+      - "9000:9000"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://cardsdb:3306/cards
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root
+    deploy:
+      resources:
+        limits:
+          memory: 700m
+    networks:
+      - medobank
+    depends_on:
+      cardsdb:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9000/actuator/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+volumes:
+  accounts_data:
+  loans_data:
+  cards_data:
+networks:
+  medobank:
+    driver: "bridge"
 ```
 
 ---
@@ -227,25 +339,21 @@ FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
 # Add non-root user for security
-RUN addgroup --system appuser && adduser --system --group appuser
+RUN addgroup -S appuser && adduser -S appuser -G appuser
 
 # Copy the JAR from the build stage to the production image
-COPY --from=build /app/target/*.jar app.jar
-RUN chown appuser:appuser app.jar
+COPY --from=build --chown=appuser:appuser /app/target/*.jar app.jar
+#RUN chown appuser:appuser app.jar (using COPY and chown in one command to reduce the layers and container size)
 
 # Add metadata labels
 LABEL maintainer="mohamed.medhat2199@gmail.com"
 LABEL description="Spring Boot Accounts Microservice"
 
-# Expose the port your Spring Boot app runs on (default is 8080)
+# Expose the port your Spring Boot app runs on
 EXPOSE 8080
 
 # Switch to non-root user
 USER appuser
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-  CMD wget --quiet --tries=1 --spider http://localhost:8080/actuator/health || exit 1
 
 # Run the application
 ENTRYPOINT ["java", "-jar", "app.jar"]

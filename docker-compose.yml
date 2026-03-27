@@ -72,6 +72,12 @@ services:
     depends_on:
       accountsdb:
         condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/actuator/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
   loans:
     build: ./Loans
     image: "medo3m/loans:medobank"
@@ -91,6 +97,12 @@ services:
     depends_on:
       loansdb:
         condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8090/actuator/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
   cards:
     build: ./Cards
     image: "medo3m/cards:medobank"
@@ -110,6 +122,12 @@ services:
     depends_on:
       cardsdb:
         condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9000/actuator/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 volumes:
   accounts_data:
   loans_data:
