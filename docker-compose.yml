@@ -1,0 +1,119 @@
+services:
+  accountsdb:
+    image: mysql
+    container_name: accounts-db
+    ports:
+      - 3306:3306
+    volumes:
+      - accounts_data:/var/lib/mysql
+    networks:
+      - medobank
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: accounts
+    healthcheck:
+      test: [ "CMD", "mysqladmin" ,"ping", "-h", "localhost" ]
+      timeout: 10s
+      retries: 10
+      interval: 10s
+      start_period: 10s
+  loansdb:
+    image: mysql
+    container_name: loans-db
+    ports:
+      - 3307:3306
+    volumes:
+      - loans_data:/var/lib/mysql
+    networks:
+      - medobank
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: loans
+    healthcheck:
+      test: [ "CMD", "mysqladmin" ,"ping", "-h", "localhost" ]
+      timeout: 10s
+      retries: 10
+      interval: 10s
+      start_period: 10s
+  cardsdb:
+    image: mysql
+    container_name: cards-db
+    ports:
+      - 3308:3306
+    volumes:
+      - cards_data:/var/lib/mysql
+    networks:
+      - medobank
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: cards
+    healthcheck:
+      test: [ "CMD", "mysqladmin" ,"ping", "-h", "localhost" ]
+      timeout: 10s
+      retries: 10
+      interval: 10s
+      start_period: 10s
+  accounts:
+    build: ./Accounts
+    image: "medo3m/accounts:medobank"
+    container_name: accounts-ms
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://accountsdb:3306/accounts
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root
+    deploy:
+      resources:
+        limits:
+          memory: 700m
+    networks:
+      - medobank
+    depends_on:
+      accountsdb:
+        condition: service_healthy
+  loans:
+    build: ./Loans
+    image: "medo3m/loans:medobank"
+    container_name: loans-ms
+    ports:
+      - "8090:8090"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://loansdb:3306/loans
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root
+    deploy:
+      resources:
+        limits:
+          memory: 700m
+    networks:
+      - medobank
+    depends_on:
+      loansdb:
+        condition: service_healthy
+  cards:
+    build: ./Cards
+    image: "medo3m/cards:medobank"
+    container_name: cards-ms
+    ports:
+      - "9000:9000"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://cardsdb:3306/cards
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root
+    deploy:
+      resources:
+        limits:
+          memory: 700m
+    networks:
+      - medobank
+    depends_on:
+      cardsdb:
+        condition: service_healthy
+volumes:
+  accounts_data:
+  loans_data:
+  cards_data:
+networks:
+  medobank:
+    driver: "bridge"
