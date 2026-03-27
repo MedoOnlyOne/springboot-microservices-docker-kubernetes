@@ -1,4 +1,53 @@
 services:
+  accountsdb:
+    image: mysql
+    container_name: accounts-db
+    ports:
+      - 3306:3306
+    networks:
+      - medobank
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: accounts
+    healthcheck:
+      test: [ "CMD", "mysqladmin" ,"ping", "-h", "localhost" ]
+      timeout: 10s
+      retries: 10
+      interval: 10s
+      start_period: 10s
+  loansdb:
+    image: mysql
+    container_name: loans-db
+    ports:
+      - 3307:3306
+    networks:
+      - medobank
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: loans
+    healthcheck:
+      test: [ "CMD", "mysqladmin" ,"ping", "-h", "localhost" ]
+      timeout: 10s
+      retries: 10
+      interval: 10s
+      start_period: 10s
+  cardsdb:
+    image: mysql
+    container_name: cards-db
+    ports:
+      - 3308:3306
+    networks:
+      - medobank
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: cards
+    healthcheck:
+      test: [ "CMD", "mysqladmin" ,"ping", "-h", "localhost" ]
+      timeout: 10s
+      retries: 10
+      interval: 10s
+      start_period: 10s
+
   accounts:
     build: ./Accounts
     image: "medo3m/accounts:medobank"
@@ -11,6 +60,9 @@ services:
           memory: 700m
     networks:
       - medobank
+    depends_on:
+      accountsdb:
+        condition: service_healthy
   loans:
     build: ./Loans
     image: "medo3m/loans:medobank"
@@ -23,6 +75,9 @@ services:
           memory: 700m
     networks:
       - medobank
+    depends_on:
+      loansdb:
+        condition: service_healthy
   cards:
     build: ./Cards
     image: "medo3m/cards:medobank"
@@ -35,6 +90,9 @@ services:
           memory: 700m
     networks:
       - medobank
+    depends_on:
+      cardsdb:
+        condition: service_healthy
 networks:
   medobank:
     driver: "bridge"
