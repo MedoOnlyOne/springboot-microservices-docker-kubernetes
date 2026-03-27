@@ -4,6 +4,8 @@ services:
     container_name: accounts-db
     ports:
       - 3306:3306
+    volumes:
+      - accounts_data:/var/lib/mysql
     networks:
       - medobank
     environment:
@@ -20,6 +22,8 @@ services:
     container_name: loans-db
     ports:
       - 3307:3306
+    volumes:
+      - loans_data:/var/lib/mysql
     networks:
       - medobank
     environment:
@@ -36,6 +40,8 @@ services:
     container_name: cards-db
     ports:
       - 3308:3306
+    volumes:
+      - cards_data:/var/lib/mysql
     networks:
       - medobank
     environment:
@@ -54,9 +60,9 @@ services:
     ports:
       - "8080:8080"
     environment:
-      SPRING_DATASORCE_URL: jdbc:mysql://accountsdb:3306/accounts
-      SPRING_DATASORCE_USERNAME: root
-      SPRING_DATASORCE_PASSWORD: root
+      SPRING_DATASOURCE_URL: jdbc:mysql://accountsdb:3306/accounts
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root
     deploy:
       resources:
         limits:
@@ -73,9 +79,9 @@ services:
     ports:
       - "8090:8090"
     environment:
-      SPRING_DATASORCE_URL: jdbc:mysql://loansdb:3306/loans
-      SPRING_DATASORCE_USERNAME: root
-      SPRING_DATASORCE_PASSWORD: root
+      SPRING_DATASOURCE_URL: jdbc:mysql://loansdb:3306/loans
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root
     deploy:
       resources:
         limits:
@@ -92,9 +98,9 @@ services:
     ports:
       - "9000:9000"
     environment:
-      SPRING_DATASORCE_URL: jdbc:mysql://cardsdb:3306/cards
-      SPRING_DATASORCE_USERNAME: root
-      SPRING_DATASORCE_PASSWORD: root
+      SPRING_DATASOURCE_URL: jdbc:mysql://cardsdb:3306/cards
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root
     deploy:
       resources:
         limits:
@@ -104,6 +110,10 @@ services:
     depends_on:
       cardsdb:
         condition: service_healthy
+volumes:
+  accounts_data:
+  loans_data:
+  cards_data:
 networks:
   medobank:
     driver: "bridge"
