@@ -1,5 +1,6 @@
 services:
   accounts:
+    build: ./Accounts
     image: "medo3m/accounts:medobank"
     container_name: accounts-ms
     ports:
@@ -11,6 +12,7 @@ services:
     networks:
       - medobank
   loans:
+    build: ./Loans
     image: "medo3m/loans:medobank"
     container_name: loans-ms
     ports:
@@ -22,6 +24,7 @@ services:
     networks:
       - medobank
   cards:
+    build: ./Cards
     image: "medo3m/cards:medobank"
     container_name: cards-ms
     ports:
