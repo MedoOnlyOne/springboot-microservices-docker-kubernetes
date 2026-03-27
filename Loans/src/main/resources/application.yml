@@ -4,9 +4,9 @@ spring:
   application:
     name: Loans
   datasource:
-    url: jdbc:mysql://localhost:3307/loansdb
-    username: root
-    password: root
+    url: ${SPRING_DATASORCE_URL}
+    username: ${SPRING_DATASORCE_USERNAME}
+    password: ${SPRING_DATASORCE_PASSWORD}
   jpa:
     show-sql: true
   sql:
