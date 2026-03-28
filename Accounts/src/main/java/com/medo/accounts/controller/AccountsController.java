@@ -14,6 +14,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Pattern;
 import lombok.AllArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -22,14 +24,21 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping(value = "/api/v1/accounts", produces = MediaType.APPLICATION_JSON_VALUE)
-@AllArgsConstructor
 @Validated
 @Tag(
         name = "Accounts REST APIs",
         description = "REST APIs for accounts microservice"
 )
 public class AccountsController {
-    private IAccountsService accountsService;
+    private final IAccountsService accountsService;
+
+    @Autowired
+    public AccountsController(IAccountsService accountsService) {
+        this.accountsService = accountsService;
+    }
+
+    @Value("${build.info.version}")
+    private String buildVersion;
 
     @Operation(
             method = "POST",
@@ -205,6 +214,22 @@ public class AccountsController {
                     .status(HttpStatus.EXPECTATION_FAILED)
                     .body(new ResponseDto(AccountsConstants.CONST.get("STATUS_417"), AccountsConstants.CONST.get("MESSAGE_417")));
         }
+    }
+    @Operation(
+            method = "GET",
+            summary = "Get build version",
+            description = "REST APIs build version"
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "OK"
+            )
+    })
+    @GetMapping("/build-info")
+    public ResponseEntity<String> getBuildVersion() {
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(buildVersion);
     }
 
 }
