@@ -1,0 +1,11 @@
+build:
+  info:
+    version: 1.0
+cards:
+  message: "Welcome to medobank cards related prod APIs "
+  contactDetails:
+    name: "Medo - Developer"
+    email: "medo@medobank.com"
+  onCallSupport:
+    - (555) 555-1234
+    - (555) 523-1345

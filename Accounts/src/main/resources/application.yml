@@ -10,3 +10,5 @@ spring:
   sql:
     init:
       mode: always
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE}

@@ -1,0 +1,11 @@
+build:
+  info:
+    version: 2.0
+accounts:
+  message: "Welcome to medobank accounts related local APIs "
+  contactDetails:
+    name: "Medo3M - Developer"
+    email: "medo3m@medobank.com"
+  onCallSupport:
+    - (555) 555-1234
+    - (555) 523-1345

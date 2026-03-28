@@ -1,11 +1,15 @@
 package com.medo.loans.controller;
 
 import com.medo.loans.constants.LoansConstants;
+import com.medo.loans.dto.LoansContactInfoDto;
 import com.medo.loans.dto.LoansDto;
 import com.medo.loans.dto.ResponseDto;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Pattern;
 import lombok.AllArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.Environment;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -15,10 +19,22 @@ import com.medo.loans.service.ILoansService;
 
 @RestController
 @RequestMapping(path = "/api", produces = {MediaType.APPLICATION_JSON_VALUE})
-@AllArgsConstructor
 @Validated
 public class LoansController {
-    private ILoansService iLoansService;
+    private final ILoansService iLoansService;
+    private final Environment environment;
+    private final LoansContactInfoDto loansContactInfoDto;
+
+    @Autowired
+    public LoansController(ILoansService iLoansService, Environment environment, LoansContactInfoDto loansContactInfoDto) {
+        this.iLoansService = iLoansService;
+        this.environment = environment;
+        this.loansContactInfoDto = loansContactInfoDto;
+    }
+
+    @Value("${build.info.version}")
+    private String buildVersion;
+
     @PostMapping("/create")
     public ResponseEntity<ResponseDto> createLoan(@RequestParam @Pattern(regexp="(^$|[0-9]{10})",message = "Mobile number must be 10 digits") String mobileNumber){
         iLoansService.createLoan(mobileNumber);
@@ -46,7 +62,8 @@ public class LoansController {
                     .status(HttpStatus.EXPECTATION_FAILED)
                     .body(new ResponseDto(LoansConstants.STATUS_417, LoansConstants.MESSAGE_417_UPDATE));
         }
-    }@DeleteMapping("/delete")
+    }
+    @DeleteMapping("/delete")
     public ResponseEntity<ResponseDto> deleteLoan(@RequestParam @Pattern(regexp = "^$|[0-9]{10}", message = "Mobile number must be 10 digits") String mobileNumber){
         boolean isDeleted = iLoansService.deleteLoan(mobileNumber);
         if(isDeleted) {
@@ -58,5 +75,20 @@ public class LoansController {
                     .status(HttpStatus.EXPECTATION_FAILED)
                     .body(new ResponseDto(LoansConstants.STATUS_417, LoansConstants.MESSAGE_417_DELETE));
         }
+    }
+    @GetMapping("/build-info")
+    public ResponseEntity<String> getBuildInfo(){
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(buildVersion);
+    }
+    @GetMapping("/java-version")
+    public ResponseEntity<String> getJavaVersion(){
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(environment.getProperty("java.home"));
+    }
+    @GetMapping("/contact-info")
+    public ResponseEntity<LoansContactInfoDto> getContactInfo(){
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(loansContactInfoDto);
     }
 }

@@ -1,0 +1,11 @@
+build:
+  info:
+    version: 3.0
+loans:
+  message: "Welcome to medobank loans related qa APIs "
+  contactDetails:
+    name: "3M - Developer"
+    email: "3m@medobank.com"
+  onCallSupport:
+    - (555) 555-1234
+    - (555) 523-1345
