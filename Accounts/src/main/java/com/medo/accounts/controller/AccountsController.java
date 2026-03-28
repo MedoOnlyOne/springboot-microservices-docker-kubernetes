@@ -16,6 +16,7 @@ import jakarta.validation.constraints.Pattern;
 import lombok.AllArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.Environment;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -31,10 +32,11 @@ import org.springframework.web.bind.annotation.*;
 )
 public class AccountsController {
     private final IAccountsService accountsService;
-
+    private final Environment environment;
     @Autowired
-    public AccountsController(IAccountsService accountsService) {
+    public AccountsController(IAccountsService accountsService, Environment environment) {
         this.accountsService = accountsService;
+        this.environment = environment;
     }
 
     @Value("${build.info.version}")
@@ -224,12 +226,42 @@ public class AccountsController {
             @ApiResponse(
                     responseCode = "200",
                     description = "OK"
+            ),
+            @ApiResponse(
+                    responseCode = "500",
+                    description = "Internal server Error",
+                    content = @Content(
+                            schema = @Schema(implementation = ErrorResponseDto.class)
+                    )
             )
     })
     @GetMapping("/build-info")
     public ResponseEntity<String> getBuildVersion() {
         return ResponseEntity.status(HttpStatus.OK)
                 .body(buildVersion);
+    }
+    @Operation(
+            method = "GET",
+            summary = "Get Java version",
+            description = "REST APIs Java version"
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "OK"
+            ),
+            @ApiResponse(
+                    responseCode = "500",
+                    description = "Internal server Error",
+                    content = @Content(
+                            schema = @Schema(implementation = ErrorResponseDto.class)
+                    )
+            )
+    })
+    @GetMapping("/java-version")
+    public ResponseEntity<String> getJavaVersion() {
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(environment.getProperty("java.home"));
     }
 
 }
