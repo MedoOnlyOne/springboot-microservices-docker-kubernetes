@@ -1,6 +1,7 @@
 package com.medo.accounts.controller;
 
 import com.medo.accounts.constants.AccountsConstants;
+import com.medo.accounts.dto.AccountsContactInfoDto;
 import com.medo.accounts.dto.CustomerDto;
 import com.medo.accounts.dto.ErrorResponseDto;
 import com.medo.accounts.dto.ResponseDto;
@@ -33,10 +34,12 @@ import org.springframework.web.bind.annotation.*;
 public class AccountsController {
     private final IAccountsService accountsService;
     private final Environment environment;
+    private final AccountsContactInfoDto accountsContactInfoDto;
     @Autowired
-    public AccountsController(IAccountsService accountsService, Environment environment) {
+    public AccountsController(IAccountsService accountsService, Environment environment, AccountsContactInfoDto accountsContactInfoDto) {
         this.accountsService = accountsService;
         this.environment = environment;
+        this.accountsContactInfoDto = accountsContactInfoDto;
     }
 
     @Value("${build.info.version}")
@@ -262,6 +265,29 @@ public class AccountsController {
     public ResponseEntity<String> getJavaVersion() {
         return ResponseEntity.status(HttpStatus.OK)
                 .body(environment.getProperty("java.home"));
+    }
+    @Operation(
+            method = "GET",
+            summary = "Get contact info",
+            description = "Contact Info Details"
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "OK"
+            ),
+            @ApiResponse(
+                    responseCode = "500",
+                    description = "Internal server Error",
+                    content = @Content(
+                            schema = @Schema(implementation = ErrorResponseDto.class)
+                    )
+            )
+    })
+    @GetMapping("/contact-info")
+    public ResponseEntity<AccountsContactInfoDto> getContactInfo() {
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(accountsContactInfoDto);
     }
 
 }
