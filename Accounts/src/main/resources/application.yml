@@ -10,14 +10,5 @@ spring:
   sql:
     init:
       mode: always
-build:
-  info:
-    version: 1.0
-accounts:
-  message: "Welcome to EazyBank accounts related local APIs "
-  contactDetails:
-    name: "John Doe - Developer"
-    email: "john@eazybank.com"
-  onCallSupport:
-    - (555) 555-1234
-    - (555) 523-1345
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE}
