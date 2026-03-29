@@ -1,8 +1,8 @@
 server:
-  port: 8080
+  port: 9010
 spring:
   datasource:
-    url: ${SPRING_DATASOURCE_URL}
+    url: ${ACCOUNTS_SPRING_DATASOURCE_URL}
     username: ${SPRING_DATASOURCE_USERNAME}
     password: ${SPRING_DATASOURCE_PASSWORD}
   jpa:

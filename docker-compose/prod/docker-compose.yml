@@ -54,15 +54,16 @@ services:
       interval: 10s
       start_period: 10s
   accounts:
-    build: ./Accounts
+    build: ../../Accounts
     image: "medo3m/accounts:medobank"
-    container_name: accounts-ms
+    container_name: accounts-prod-ms
     ports:
-      - "8080:8080"
+      - "9010:9010"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://accountsdb:3306/accounts
+      ACCOUNTS_SPRING_DATASOURCE_URL: jdbc:mysql://accountsdb:3306/accounts
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: root
+      SPRING_PROFILES_ACTIVE: prod
     deploy:
       resources:
         limits:
@@ -79,15 +80,16 @@ services:
       retries: 3
       start_period: 40s
   loans:
-    build: ./Loans
+    build: ../../Loans
     image: "medo3m/loans:medobank"
-    container_name: loans-ms
+    container_name: loans-prod-ms
     ports:
-      - "8090:8090"
+      - "9030:9030"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://loansdb:3306/loans
+      LOANS_SPRING_DATASOURCE_URL: jdbc:mysql://loansdb:3306/loans
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: root
+      SPRING_PROFILES_ACTIVE: prod
     deploy:
       resources:
         limits:
@@ -104,15 +106,16 @@ services:
       retries: 3
       start_period: 40s
   cards:
-    build: ./Cards
+    build: ../../Cards
     image: "medo3m/cards:medobank"
-    container_name: cards-ms
+    container_name: cards-prod-ms
     ports:
-      - "9000:9000"
+      - "9020:9020"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://cardsdb:3306/cards
+      CARDS_SPRING_DATASOURCE_URL: jdbc:mysql://cardsdb:3306/cards
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: root
+      SPRING_PROFILES_ACTIVE: prod
     deploy:
       resources:
         limits:

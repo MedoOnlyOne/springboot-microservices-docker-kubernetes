@@ -25,8 +25,8 @@ COPY --from=build --chown=appuser:appuser /app/target/*.jar app.jar
 LABEL maintainer="mohamed.medhat2199@gmail.com"
 LABEL description="Spring Boot Accounts Microservice"
 
-# Expose the port your Spring Boot app runs on (default is 8080)
-EXPOSE 8080
+# Expose the port your Spring Boot app runs on
+EXPOSE 9010
 
 # Switch to non-root user
 USER appuser

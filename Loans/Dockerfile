@@ -26,7 +26,7 @@ LABEL maintainer="mohamed.medhat2199@gmail.com"
 LABEL description="Spring Boot Loans Microservice"
 
 # Expose the port your Spring Boot app runs on
-EXPOSE 8090
+EXPOSE 9030
 
 # Switch to non-root user
 USER appuser

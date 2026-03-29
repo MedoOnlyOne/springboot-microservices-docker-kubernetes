@@ -26,7 +26,7 @@ LABEL maintainer="mohamed.medhat2199@gmail.com"
 LABEL description="Spring Boot Cards Microservice"
 
 # Expose the port your Spring Boot app runs on
-EXPOSE 9000
+EXPOSE 9020
 
 # Switch to non-root user
 USER appuser
